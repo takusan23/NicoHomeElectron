@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>NicoHome</title>
+    <!--Import Google Icon Font-->
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons|Material+Icons+Outlined" rel="stylesheet">
+    <!--Import materialize.css-->
+    <link type="text/css" rel="stylesheet" href="css/materialize.min.css" media="screen,projection" />
+    <link type="text/css" rel="stylesheet" href="css/index.css" />
+</head>
+
+<body>
+    <script type="text/javascript" src="JS/materialize.min.js"></script>
+    <script type="text/javascript" src="../js/renderer.js"></script>
+
+    <div class="margin">
+        <div class="input-field col s6 yoko">
+            <input placeholder="smから始まる動画ID" id="video_id_input" type="text" class="validate">
+            <label for="video_id_input">動画ID</label>
+        </div>
+
+        <div style="margin-top: 10px;" class="yoko">
+            <a class="waves-effect waves-light btn" id="video_id_button" onclick="getNicoVideoHTML()"><i class="material-icons-outlined left">cast</i>再生</a>
+        </div>
+
+    </div>
+
+
+</body>
+
+</html>
