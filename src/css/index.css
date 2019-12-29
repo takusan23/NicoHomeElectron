@@ -1,7 +1,3 @@
-.yoko {
-    float: left;
-}
-
 .width_80 {
     width: 80%;
 }
@@ -12,4 +8,18 @@
 
 .margin {
     margin: 10px;
+}
+
+.margin_ui {
+    margin: 1%;
+}
+
+.center {
+    width: 95%;
+    margin: 0 auto;
+}
+
+.grid {
+    display: grid;
+    grid-template-columns: 150px 2fr 150px;
 }

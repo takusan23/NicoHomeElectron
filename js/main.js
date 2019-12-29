@@ -3,6 +3,7 @@ exports.__esModule = true;
 var electron_1 = require("electron");
 var path = require("path");
 var mainWindow;
+var loginWindow;
 function createWindow() {
     // Create the browser window.
     mainWindow = new electron_1.BrowserWindow({
@@ -46,4 +47,23 @@ electron_1.app.on("activate", function () {
 });
 // In this file you can include the rest of your app"s specific main process
 // code. You can also put them in separate files and require them here.
+//IPC受け取り
+//ログイン画面を表示しろと来たら表示させる。別にメインプロセスじゃなくてリモートでも使える。
+electron_1.ipcMain.on('login', function (event, arg) {
+    if (arg === 'show') {
+        //ログイン画面表示
+        loginWindow = new electron_1.BrowserWindow({
+            height: 600,
+            webPreferences: {
+                nodeIntegration: true //trueにしておく。preload使ってもいいけど今回はパス。
+            },
+            width: 800
+        });
+        loginWindow.loadFile(path.join(__dirname, "../src/html/login.html")); //index.htmlはsrcフォルダ（main.jsはjsフォルダ）なのでパス気をつけて。
+        loginWindow.webContents.openDevTools();
+        loginWindow.on("closed", function () {
+            loginWindow = null;
+        });
+    }
+});
 //# sourceMappingURL=main.js.map

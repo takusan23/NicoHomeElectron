@@ -1,51 +1,104 @@
+import { session } from "electron"
+import { stat } from "fs"
 
-let heartbeatInterval
+const { ipcRenderer } = require('electron')
+
+//IPC通信
+function showLoginWindow() {
+    //ログイン画面を表示しろとメインプロセスへ送信
+    ipcRenderer.send('login', 'show')
+}
+
+let heartbeatInterval: NodeJS.Timeout = null
+
+let videoId = ""
+
 
 //ニコニコ動画のHTML取得
 function getNicoVideoHTML() {
+    const request = require('request')
+
+    if (heartbeatInterval != null) {
+        clearInterval(heartbeatInterval)
+    }
+
     // HTMLInputElement じゃないと value ない
     const input: HTMLInputElement = <HTMLInputElement>document.getElementById('video_id_input')
-    const id = input.value
+    videoId = input.value
+    //user_session
+    const user_session = localStorage.getItem('user_session')
+    if (user_session == null) {
+        return
+    }
     //URL
-    const url = `https://www.nicovideo.jp/watch/${id}`
-    //リクエスト
-    var xml = new XMLHttpRequest()
-    xml.open("GET", url)
-    xml.onreadystatechange = function (e) {
-        if (xml.status == 200) {
-            const html = xml.response
-            //解析。
+    const url = `https://www.nicovideo.jp/watch/${videoId}`
+    //リクエスト。XMLHttpRequestだとCookie付けられなかった。
+    //ヘッダー
+    var headers = {
+        'Cookie': `user_session=${user_session}`,
+        'User-Agent': 'NicoHome;@takusan_23'
+    }
+    //オプション
+    var options = {
+        url: url,
+        method: 'POST',
+        headers: headers,
+    }
+    request(options, function (error: any, response: any, body: any) {
+        if (response.statusCode == 200) {
+            //HTMLスクレイピング
             const dom = new DOMParser()
-            const nicoVideoHTML = dom.parseFromString(html, 'text/html')
+            const nicoVideoHTML = dom.parseFromString(body, 'text/html')
             //JSONあるDiv要素を探す
             const jsonDiv = nicoVideoHTML.getElementById('js-initial-watch-data')
             const jsonString = jsonDiv.getAttribute('data-api-data')
-            getContentURL(jsonString)
+            //dmcInfoがJSONに存在するかで分岐。
+            const json = JSON.parse(jsonString)
+            if (json.video.dmcInfo != null) {
+                //存在するとき、APIを叩いてURLをもらう。新サーバーの動画？DMC？
+                //すべての動画が変換されているわけではない模様。
+                getContentURL(jsonString)
+            } else {
+                //昔の動画でも変換してる場合もあるんだけどなんで？
+                //dmcInfo無いときはHTMLのJSONの中に動画URLがあるのでそっち使う。
+
+                //なんかしらんけどsmileさーばーの動画再生できない。
+
+                const url = json.video.smileInfo.url
+                console.log(url)
+                playGoogleHome(url)
+            }
         }
-    }
-    xml.send()
+    })
 }
 
 function getContentURL(jsonString: string) {
-    //ニコニコ動画の動画URLを取得する。くっそめんどい。
+    //ニコニコ動画の動画URLを取得する。くっそめんどい。もう一度（二回）APIを叩かないといけない模様。
+
+    //URL
+    const url = `https://api.dmc.nico/api/sessions?_format=json`
+
 
     //HTMLのJSON
     const json = JSON.parse(jsonString)
-    console.log(json.video.dmcInfo.session_api)
+    // console.log(json.video.dmcInfo.session_api)
 
-    //送るJSON。長すぎ
-    const sendData = {
+    const jsonSessionAPI = json.video.dmcInfo.session_api
+    const jsonStoryboardSessionAPI = json.video.dmcInfo.storyboard_session_api
+
+    // session_api 
+    const sessionApi = {
         "session": {
-            "recipe_id": json.video.dmcInfo.session_api.recipe_id,
-            "content_id": json.video.dmcInfo.session_api.content_id,
+            "recipe_id": jsonSessionAPI.recipe_id,
+            "content_id": jsonSessionAPI.content_id,
             "content_type": "movie",
             "content_src_id_sets": [
                 {
                     "content_src_ids": [
                         {
                             "src_id_to_mux": {
-                                "video_src_ids": json.video.dmcInfo.session_api.videos,
-                                "audio_src_ids": json.video.dmcInfo.session_api.audios
+                                "video_src_ids": jsonSessionAPI.videos,
+                                "audio_src_ids": jsonSessionAPI.audios
                             }
                         }
                     ]
@@ -65,8 +118,7 @@ function getContentURL(jsonString: string) {
                             "http_output_download_parameters": {
                                 "use_well_known_port": "yes",
                                 "use_ssl": "yes",
-                                "transfer_preset": "",
-                                "segment_duration": 6000
+                                "transfer_preset": "standard2"
                             }
                         }
                     }
@@ -75,50 +127,206 @@ function getContentURL(jsonString: string) {
             "content_uri": "",
             "session_operation_auth": {
                 "session_operation_auth_by_signature": {
-                    "token": json.video.dmcInfo.session_api.token,
-                    "signature": json.video.dmcInfo.session_api.signature
+                    "token": jsonSessionAPI.token,
+                    "signature": jsonSessionAPI.signature
                 }
             },
             "content_auth": {
                 "auth_type": "ht2",
                 "content_key_timeout": 600000,
                 "service_id": "nicovideo",
-                "service_user_id": json.video.dmcInfo.session_api.service_user_id
+                "service_user_id": jsonSessionAPI.service_user_id
             },
             "client_info": {
-                "player_id": json.video.dmcInfo.session_api.player_id
+                "player_id": jsonSessionAPI.player_id
             },
-            "priority": 0 //０にするといい？
+            "priority": JSON.parse(jsonSessionAPI.token).priority
         }
     }
 
-    //送信
-    //URL
-    const url = `https://api.dmc.nico/api/sessions?_format=json`
+    //１つ目のAPIを叩く。sessionAPIをPOST。content_idがout1のやつ。
+    //content_idがout1のやつだと、content_uriで動画リンクが取れる。
     //リクエスト
-    var xml = new XMLHttpRequest()
-    xml.open("POST", url)
-    xml.onreadystatechange = function (e) {
-        const responseJSON = JSON.parse(xml.response)
-        console.log(responseJSON);
-
-        //URL
-        const contentURL = responseJSON.data.session.content_uri       
-
-        //GoogleHomeで再生
-        playGoogleHome(contentURL)
-
-        //id（ハートビートで必要）
-        const id = responseJSON.data.session.id
-        sendHeartBeat(id, JSON.stringify(responseJSON.data))
-        //120秒ごとに送信する
-        setInterval(function () {
-            sendHeartBeat(id, JSON.stringify(responseJSON.data))
-        }, 120 * 1000)
+    const request = require('request')
+    //ヘッダー
+    var headers = {
+        'User-Agent': 'NicoHome;@takusan_23',
+        'Content-Type': 'application/json'
     }
-    xml.send(JSON.stringify(sendData))
+    //オプション
+    var options_one = {
+        url: url,
+        method: 'POST',
+        headers: headers,
+        json: sessionApi
+    }
+    request(options_one, function (error: any, response: any, body: any) {
+        console.log('APIレスポンス session_api');
+        console.log(body);
+        const responseJSON = body
+        //content_uri 動画リンク。
+        const content_uri = responseJSON.data.session.content_uri
+        const id = responseJSON.data.session.id
+        //再生
+        playGoogleHome(content_uri)
+
+        //  40秒ごとに視聴継続メッセージを送信する。
+        //  これしないと鯖が「動画送るのやーめた」って切られちゃうので。めんどい。
+        heartbeatInterval = setInterval(function () {
+            //URL構築
+            const sessionAPIURL = `https://api.dmc.nico/api/sessions/${id}?_format=json&_method=PUT`
+            //視聴継続メッセージ送信
+            const request = require('request')
+            //ヘッダー
+            var headers = {
+                'User-Agent': 'NicoHome;@takusan_23',
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+            }
+
+            // const modified_time = responseJSON.data.session.modified_time
+            // responseJSON.data.session.modified_time = modified_time + 40000
+
+            //オプション
+            var options = {
+                url: sessionAPIURL,
+                method: 'POST',
+                headers: headers,
+                json: responseJSON.data
+            }
 
 
+            console.log(sessionAPIURL);
+            console.log(responseJSON.data);
+
+
+            request(options, function (error: any, response: any, body: any) {
+                console.log('視聴継続メッセージ送信 40秒ごと')
+                console.log(response.statusCode)
+                console.log(body)
+            })
+        }, 40 * 1000)
+
+
+        //URL構築
+        const sessionAPIURL = `https://api.dmc.nico/api/sessions/${id}?_format=json&_method=PUT`
+        //視聴継続メッセージ送信
+        const request = require('request')
+        //ヘッダー
+        var headers = {
+            'User-Agent': 'NicoHome;@takusan_23',
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+        }
+        //オプション
+        var options = {
+            url: sessionAPIURL,
+            method: 'POST',
+            headers: headers,
+            json: responseJSON.data
+        }
+        request(options, function (error: any, response: any, body: any) {
+            console.log('視聴継続メッセージ送信')
+            console.log(response.statusCode)
+            console.log(body)
+        })
+
+    })
+
+    //JSONにstoryboard_session_apiが無いときある？
+    if (json.video.dmcInfo.storyboard_session_api != null) {
+        //StoryboardSessionAPI
+        const storyboardSessionAPI = {
+            "session": {
+                "recipe_id": jsonStoryboardSessionAPI.recipe_id,
+                "content_id": jsonStoryboardSessionAPI.content_id,
+                "content_type": "video",
+                "content_src_id_sets": [
+                    {
+                        "content_src_ids": jsonStoryboardSessionAPI.videos
+                    }
+                ],
+                "timing_constraint": "unlimited",
+                "keep_method": {
+                    "heartbeat": {
+                        "lifetime": 300000
+                    }
+                },
+                "protocol": {
+                    "name": "http",
+                    "parameters": {
+                        "http_parameters": {
+                            "parameters": {
+                                "storyboard_download_parameters": {
+                                    "use_well_known_port": "yes",
+                                    "use_ssl": "yes"
+                                }
+                            }
+                        }
+                    }
+                },
+                "content_uri": "",
+                "session_operation_auth": {
+                    "session_operation_auth_by_signature": {
+                        "token": jsonStoryboardSessionAPI.token,
+                        "signature": jsonStoryboardSessionAPI.signature
+                    }
+                },
+                "content_auth": {
+                    "auth_type": "ht2",
+                    "content_key_timeout": 600000,
+                    "service_id": "nicovideo",
+                    "service_user_id": jsonStoryboardSessionAPI.service_user_id
+                },
+                "client_info": {
+                    "player_id": JSON.parse(jsonStoryboardSessionAPI.token).player_id
+                },
+                "priority": JSON.parse(jsonStoryboardSessionAPI.token).priority
+            }
+        }
+
+        //２つ目のAPIを叩く。storyboardSessionAPIをPOST。content_idがsb_out1のやつ。
+        //これを叩いたらすぐにjson.data.session.idを取ってURLを構築してレスポンスをPOSTする。
+        const request = require('request')
+        //ヘッダー
+        var headers = {
+            'User-Agent': 'NicoHome;@takusan_23',
+            'Content-Type': 'application/json'
+        }
+        //オプション
+        var options = {
+            url: url,
+            method: 'POST',
+            headers: headers,
+            json: storyboardSessionAPI
+        }
+        request(options, function (error: any, response: any, body: any) {
+            console.log('APIレスポンス storyboardSessionAPI')
+            console.log(body)
+            const responseJSON = body
+            const id = responseJSON.data.session.id
+            //URL構築
+            const sessionAPIURL = `https://api.dmc.nico/api/sessions/${id}?_format=json&_method=DELETE`
+            //視聴継続メッセージ送信（これは一度だけ）
+            const request = require('request')
+            //ヘッダー
+            var headers = {
+                'User-Agent': 'NicoHome;@takusan_23',
+                'Content-Type': 'application/json'
+            }
+            //オプション
+            var options = {
+                url: sessionAPIURL,
+                method: 'POST',
+                headers: headers,
+                json: responseJSON.data
+            }
+            request(options, function (error: any, response: any, body: any) {
+                console.log('視聴継続メッセージ送信 一度だけ')
+                console.log(body)
+            })
+        })
+    }
 }
 
 let isFirst = true
@@ -163,7 +371,7 @@ function playGoogleHome(url: string) {
             const media = {
                 contentId: url,
                 contentType: 'audio/mp3',
-                streamType: 'BUFFERED',
+                streamType: 'LIVE',
             };
             player.load(media, { autoplay: true }, (err: any, status: any) => {
                 console.log(err, status);
@@ -172,3 +380,4 @@ function playGoogleHome(url: string) {
         });
     });
 }
+

@@ -17,14 +17,23 @@
     <script type="text/javascript" src="JS/materialize.min.js"></script>
     <script type="text/javascript" src="../js/renderer.js"></script>
 
-    <div class="margin">
-        <div class="input-field col s6 yoko">
+
+
+    <div class="margin grid">
+
+        <div style="margin-top: 10px;" class="center">
+            <a class="waves-effect waves-light btn" id="login_button" onclick="showLoginWindow()"><i
+                    class="material-icons-outlined left">lock</i>ログイン</a>
+        </div>
+
+        <div class="input-field col s6 center">
             <input placeholder="smから始まる動画ID" id="video_id_input" type="text" class="validate">
             <label for="video_id_input">動画ID</label>
         </div>
 
-        <div style="margin-top: 10px;" class="yoko">
-            <a class="waves-effect waves-light btn" id="video_id_button" onclick="getNicoVideoHTML()"><i class="material-icons-outlined left">cast</i>再生</a>
+        <div style="margin-top: 10px;" class="center">
+            <a class="waves-effect waves-light btn" id="video_id_button" onclick="getNicoVideoHTML()"><i
+                    class="material-icons-outlined left">cast</i>再生</a>
         </div>
 
     </div>
