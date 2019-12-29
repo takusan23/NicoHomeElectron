@@ -34,7 +34,7 @@ body {
 .stack_grid {
     height: 100%;
     display: grid;
-    grid-template-rows: 100px 1fr 60px;
+    grid-template-rows: 10% 80% 10%;
 }
 
 .grid {
@@ -52,4 +52,34 @@ body {
     overflow: hidden;
 }
 
-.content_area {}
+.content_area {
+    display: grid;
+    grid-template-columns: 200px 1fr;
+}
+
+.mylistlist {
+    background: gray;
+    overflow-y: scroll;
+    overflow-x: hidden;
+    height: 100%;
+}
+
+.mylistlist_button {
+    padding: 10px;
+    width: 100%;
+    color: white;
+    font-size: large;
+}
+
+.video_card {
+    margin: 10px;
+    padding: 10px;
+    display: grid;
+    grid-template-columns: 100px 1fr;
+}
+
+.videolist {
+    overflow-y: scroll;
+    overflow-x: hidden;
+    height: 100%;
+}

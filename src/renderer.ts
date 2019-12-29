@@ -1,5 +1,10 @@
 const { ipcRenderer } = require('electron')
 
+window.onload = function () {
+    getMylistToken()
+}
+
+
 //IPC通信
 function showLoginWindow() {
     //ログイン画面を表示しろとメインプロセスへ送信
@@ -77,7 +82,10 @@ function getNicoVideoHTML() {
 
                 const url = json.video.smileInfo.url
                 console.log(url)
-                playGoogleHome(url)
+                //  playGoogleHome(url)
+
+                M.toast({ html: 'smileサーバーの動画は再生できません。' })
+
             }
         }
     })
@@ -397,7 +405,128 @@ function playGoogleHome(url: string) {
 
         });
     });
-
-
 }
 
+
+//マイリスト読み込む
+function getMylistToken() {
+    //user_session取得
+    const user_session = localStorage.getItem('user_session')
+    if (user_session === null) {
+        return //無いなら関数終了
+    }
+    const url = 'https://www.nicovideo.jp/my/mylist'
+    const request = require('request')
+    //ヘッダー
+    var headers = {
+        'Cookie': `user_session=${user_session}`,
+        'User-Agent': 'NicoHome;@takusan_23',
+        'Content-Type': 'application/json'
+    }
+    //オプション
+    var options = {
+        url: url,
+        method: 'POST',
+        headers: headers,
+    }
+    request(options, function (error: any, response: any, body: any) {
+        const pattern = 'NicoAPI.token = \"(.+?)\";'
+        //マイリスト取得に必要なトークン
+        const token = (body as string).match(pattern)[1]
+
+        loadMylistList(token)
+
+    })
+}
+
+function loadMylistList(nicotoken: string) {
+    //user_session取得
+    const user_session = localStorage.getItem('user_session')
+    const url = 'https://www.nicovideo.jp/api/mylistgroup/list'
+    const request = require('request')
+    //ヘッダー
+    var headers = {
+        'Cookie': `user_session=${user_session}`,
+        'User-Agent': 'NicoHome;@takusan_23',
+        'Content-Type': 'application/x-www-form-urlencoded'
+    }
+    //オプション
+    var options = {
+        url: url,
+        method: 'POST',
+        headers: headers,
+        form: { token: nicotoken }
+    }
+    request(options, function (error: any, response: any, body: any) {
+        const json = JSON.parse(body)
+        const list = json.mylistgroup
+        for (let index = 0; index < list.length; index++) {
+            const item = list[index];
+            const id = item.id
+            //ボタン作成
+            const button = document.createElement('a')
+            button.className = 'waves-effect waves-light mylistlist_button'
+            button.innerText = item.name
+            button.setAttribute('mylist_id', item.id)
+            //追加
+            const mylistDiv = document.getElementById('mylist_list_div')
+            mylistDiv.append(button)
+            //クリックしたら読み込む
+            button.onclick = function (e) {
+                loadMylist(id, nicotoken)
+            }
+        }
+    })
+}
+
+function loadMylist(id: string, nicotoken: string) {
+    //空にする
+    const videolist = document.getElementById('videolist')
+    videolist.innerHTML = ''
+    //user_session取得
+    const user_session = localStorage.getItem('user_session')
+    const url = 'https://www.nicovideo.jp/api/mylist/list'
+    const request = require('request')
+    //ヘッダー
+    var headers = {
+        'Cookie': `user_session=${user_session}`,
+        'User-Agent': 'NicoHome;@takusan_23',
+        'Content-Type': 'application/x-www-form-urlencoded'
+    }
+    //オプション
+    var options = {
+        url: url,
+        method: 'POST',
+        headers: headers,
+        form: { token: nicotoken, group_id: id }
+    }
+    request(options, function (error: any, response: any, body: any) {
+        const json = JSON.parse(body)
+        const list = json.mylistitem
+        for (let index = 0; index < list.length; index++) {
+            const item = list[index];
+            //Card動的作成
+            const parentDiv = document.createElement('div')
+            parentDiv.className = 'waves-effect card grey lighten-5 video_card'
+            //テキスト
+            const span = document.createElement('h6')
+            span.className = 'black-text'
+            span.innerText = item.item_data.title
+            //サムネ
+            const img = document.createElement('img')
+            img.src = item.item_data.thumbnail_url
+            img.width = 80
+            //img.height = 90
+            //押したとき
+            parentDiv.onclick = function () {
+                const input: HTMLInputElement = <HTMLInputElement>document.getElementById('video_id_input')
+                input.value = item.item_data.video_id
+                getNicoVideoHTML()
+            }
+            parentDiv.append(img)
+            parentDiv.append(span)
+            videolist.append(parentDiv)
+        }
+    })
+
+}

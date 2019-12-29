@@ -1,4 +1,7 @@
 var ipcRenderer = require('electron').ipcRenderer;
+window.onload = function () {
+    getMylistToken();
+};
 //IPC通信
 function showLoginWindow() {
     //ログイン画面を表示しろとメインプロセスへ送信
@@ -67,7 +70,8 @@ function getNicoVideoHTML() {
                 //なんかしらんけどsmileさーばーの動画再生できない。
                 var url_1 = json.video.smileInfo.url;
                 console.log(url_1);
-                playGoogleHome(url_1);
+                //  playGoogleHome(url)
+                M.toast({ html: 'smileサーバーの動画は再生できません。' });
             }
         }
     });
@@ -363,10 +367,131 @@ function playGoogleHome(url) {
                     //反転させとく
                     isPlaying = !isPlaying;
                 };
-                player.media.currentSession.repeatMode = 'REPEAT_SINGLE';
-                console.log(player);
             });
         });
+    });
+}
+//マイリスト読み込む
+function getMylistToken() {
+    //user_session取得
+    var user_session = localStorage.getItem('user_session');
+    if (user_session === null) {
+        return; //無いなら関数終了
+    }
+    var url = 'https://www.nicovideo.jp/my/mylist';
+    var request = require('request');
+    //ヘッダー
+    var headers = {
+        'Cookie': "user_session=" + user_session,
+        'User-Agent': 'NicoHome;@takusan_23',
+        'Content-Type': 'application/json'
+    };
+    //オプション
+    var options = {
+        url: url,
+        method: 'POST',
+        headers: headers
+    };
+    request(options, function (error, response, body) {
+        var pattern = 'NicoAPI.token = \"(.+?)\";';
+        //マイリスト取得に必要なトークン
+        var token = body.match(pattern)[1];
+        loadMylistList(token);
+    });
+}
+function loadMylistList(nicotoken) {
+    //user_session取得
+    var user_session = localStorage.getItem('user_session');
+    var url = 'https://www.nicovideo.jp/api/mylistgroup/list';
+    var request = require('request');
+    //ヘッダー
+    var headers = {
+        'Cookie': "user_session=" + user_session,
+        'User-Agent': 'NicoHome;@takusan_23',
+        'Content-Type': 'application/x-www-form-urlencoded'
+    };
+    //オプション
+    var options = {
+        url: url,
+        method: 'POST',
+        headers: headers,
+        form: { token: nicotoken }
+    };
+    request(options, function (error, response, body) {
+        var json = JSON.parse(body);
+        var list = json.mylistgroup;
+        var _loop_1 = function (index) {
+            var item = list[index];
+            var id = item.id;
+            //ボタン作成
+            var button = document.createElement('a');
+            button.className = 'waves-effect waves-light mylistlist_button';
+            button.innerText = item.name;
+            button.setAttribute('mylist_id', item.id);
+            //追加
+            var mylistDiv = document.getElementById('mylist_list_div');
+            mylistDiv.append(button);
+            //クリックしたら読み込む
+            button.onclick = function (e) {
+                loadMylist(id, nicotoken);
+            };
+        };
+        for (var index = 0; index < list.length; index++) {
+            _loop_1(index);
+        }
+    });
+}
+function loadMylist(id, nicotoken) {
+    //空にする
+    var videolist = document.getElementById('videolist');
+    videolist.innerHTML = '';
+    //user_session取得
+    var user_session = localStorage.getItem('user_session');
+    var url = 'https://www.nicovideo.jp/api/mylist/list';
+    var request = require('request');
+    //ヘッダー
+    var headers = {
+        'Cookie': "user_session=" + user_session,
+        'User-Agent': 'NicoHome;@takusan_23',
+        'Content-Type': 'application/x-www-form-urlencoded'
+    };
+    //オプション
+    var options = {
+        url: url,
+        method: 'POST',
+        headers: headers,
+        form: { token: nicotoken, group_id: id }
+    };
+    request(options, function (error, response, body) {
+        var json = JSON.parse(body);
+        var list = json.mylistitem;
+        var _loop_2 = function (index) {
+            var item = list[index];
+            //Card動的作成
+            var parentDiv = document.createElement('div');
+            parentDiv.className = 'waves-effect card grey lighten-5 video_card';
+            //テキスト
+            var span = document.createElement('h6');
+            span.className = 'black-text';
+            span.innerText = item.item_data.title;
+            //サムネ
+            var img = document.createElement('img');
+            img.src = item.item_data.thumbnail_url;
+            img.width = 80;
+            //img.height = 90
+            //押したとき
+            parentDiv.onclick = function () {
+                var input = document.getElementById('video_id_input');
+                input.value = item.item_data.video_id;
+                getNicoVideoHTML();
+            };
+            parentDiv.append(img);
+            parentDiv.append(span);
+            videolist.append(parentDiv);
+        };
+        for (var index = 0; index < list.length; index++) {
+            _loop_2(index);
+        }
     });
 }
 //# sourceMappingURL=renderer.js.map

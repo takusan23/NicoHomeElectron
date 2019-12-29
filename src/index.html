@@ -20,11 +20,11 @@
     <div class="stack_grid">
         <div class="margin grid">
 
-            <div style="margin-top: 10px;" class="center">
+            <div class="center">
                 <a class="waves-effect waves-light btn grey darken-2" id="login_button" onclick="showLoginWindow()"><i
                         class="material-icons-outlined">lock</i></a>
-                <a class="waves-effect waves-light btn grey darken-2" id="setting_button" onclick="showSettingWindow()"><i
-                        class="material-icons-outlined">settings</i></a>
+                <a class="waves-effect waves-light btn grey darken-2" id="setting_button"
+                    onclick="showSettingWindow()"><i class="material-icons-outlined">settings</i></a>
             </div>
 
             <div class="input-field col s6 center">
@@ -32,14 +32,20 @@
                 <!-- <label for="video_id_input">動画ID</label> -->
             </div>
 
-            <div style="margin-top: 10px;" class="center">
-                <a class="waves-effect waves-light btn grey darken-2" id="video_id_button" onclick="getNicoVideoHTML()"><i
-                        class="material-icons-outlined left">cast</i>再生</a>
+            <div class="center">
+                <a class="waves-effect waves-light btn grey darken-2" id="video_id_button"
+                    onclick="getNicoVideoHTML()"><i class="material-icons-outlined left">cast</i>再生</a>
             </div>
         </div>
 
         <div class="content_area">
-            ここ
+            <div class="mylistlist" id="mylist_list_div">
+            </div>
+            <div class="videolist" id="videolist">
+
+               
+
+            </div>
         </div>
 
         <div class="margin player_area">
