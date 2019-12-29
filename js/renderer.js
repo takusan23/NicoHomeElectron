@@ -1,13 +1,20 @@
-"use strict";
-exports.__esModule = true;
 var ipcRenderer = require('electron').ipcRenderer;
 //IPC通信
 function showLoginWindow() {
     //ログイン画面を表示しろとメインプロセスへ送信
     ipcRenderer.send('login', 'show');
 }
+function showSettingWindow() {
+    //設定画面を表示しろとメインプロセスへ送信
+    ipcRenderer.send('setting', 'show');
+}
 var heartbeatInterval = null;
+//動画ID
 var videoId = "";
+//動画タイトル
+var videoTitle = "";
+//動画サムネイル
+var videoThumbnail = "";
 //ニコニコ動画のHTML取得
 function getNicoVideoHTML() {
     var request = require('request');
@@ -46,6 +53,9 @@ function getNicoVideoHTML() {
             var jsonString = jsonDiv.getAttribute('data-api-data');
             //dmcInfoがJSONに存在するかで分岐。
             var json = JSON.parse(jsonString);
+            //タイトルとサムネイル  
+            videoTitle = json.video.title;
+            videoThumbnail = json.video.largeThumbnailURL;
             if (json.video.dmcInfo != null) {
                 //存在するとき、APIを叩いてURLをもらう。新サーバーの動画？DMC？
                 //すべての動画が変換されているわけではない模様。
@@ -166,8 +176,6 @@ function getContentURL(jsonString) {
                 'Content-Type': 'application/json',
                 'Accept': 'application/json'
             };
-            // const modified_time = responseJSON.data.session.modified_time
-            // responseJSON.data.session.modified_time = modified_time + 40000
             //オプション
             var options = {
                 url: sessionAPIURL,
@@ -300,39 +308,33 @@ function getContentURL(jsonString) {
         });
     }
 }
-var isFirst = true;
-function sendHeartBeat(id, session) {
-    //ハートビート（視聴継続メッセージ）送信
-    //OPTIONS の方
-    var xml = new XMLHttpRequest();
-    xml.open("OPTIONS", "https://api.dmc.nico/api/sessions/" + id + "?_format=json&_method=PUT");
-    xml.onreadystatechange = function (e) {
-        isFirst = false;
-        console.log(xml.status);
-    };
-    xml.send(); //送る内容はapi.dmc.nico/api/sessionsのjson.data.sessionでいいらしい。
-    //POST の方
-    var xml = new XMLHttpRequest();
-    xml.open("POST", "https://api.dmc.nico/api/sessions/" + id + "?_format=json&_method=PUT");
-    xml.onreadystatechange = function (e) {
-        isFirst = false;
-        console.log(xml.status);
-    };
-    xml.send(session); //送る内容はapi.dmc.nico/api/sessionsのjson.data.sessionでいいらしい。
-}
 function playGoogleHome(url) {
     // google-home-notifierはなんかNode.JSのバージョンがなんとかで動かなかったのでこっちで。
     // 音楽再生だけなのでこっちでも良き
     // 参考：https://ebisu-voice-production.com/blogs/play-mp3-file-locally/
+    //ipアドレス取得
+    var ipAddress = localStorage.getItem('ip_address');
+    if (ipAddress === null) {
+        return; //無いなら関数終了
+    }
     var _a = require('castv2-client'), Client = _a.Client, DefaultMediaReceiver = _a.DefaultMediaReceiver;
-    var host = process.env.HOST || '192.168.1.36';
+    var host = process.env.HOST || ipAddress;
     var client = new Client();
     client.connect(host, function () {
         client.launch(DefaultMediaReceiver, function (err, player) {
             var media = {
                 contentId: url,
-                contentType: 'audio/mp3',
-                streamType: 'LIVE'
+                contentType: 'video/mp4',
+                streamType: 'BUFFERED',
+                //メタデータ（名前とかアルバムカバーとか）
+                metadata: {
+                    type: 0,
+                    metadataType: 0,
+                    title: videoTitle,
+                    images: [
+                        { url: videoThumbnail }
+                    ]
+                }
             };
             player.load(media, { autoplay: true }, function (err, status) {
                 console.log(err, status);

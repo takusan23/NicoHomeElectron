@@ -1,9 +1,12 @@
 import { app, BrowserWindow, Menu, MenuItem, IpcMain, ipcMain } from "electron";
 import * as path from "path";
 
-let mainWindow: Electron.BrowserWindow;
-
+//メイン
+let mainWindow: Electron.BrowserWindow
+//ログイン画面
 let loginWindow: Electron.BrowserWindow
+//設定画面
+let settingWindow: Electron.BrowserWindow
 
 function createWindow() {
     // Create the browser window.
@@ -70,9 +73,26 @@ ipcMain.on('login', function (event, arg) {
             width: 800,
         });
         loginWindow.loadFile(path.join(__dirname, "../src/html/login.html"));　//index.htmlはsrcフォルダ（main.jsはjsフォルダ）なのでパス気をつけて。
-        loginWindow.webContents.openDevTools();
         loginWindow.on("closed", () => {
             loginWindow = null;
+        });
+    }
+})
+
+//設定画面表示。のIPC通信
+ipcMain.on('setting', function (event, arg) {
+    if (arg === 'show') {
+        //設定画面表示。
+        settingWindow = new BrowserWindow({
+            height: 600,
+            webPreferences: {
+                nodeIntegration: true //trueにしておく。preload使ってもいいけど今回はパス。
+            },
+            width: 800,
+        });
+        settingWindow.loadFile(path.join(__dirname, "../src/html/settings.html"));　//index.htmlはsrcフォルダ（main.jsはjsフォルダ）なのでパス気をつけて。
+        settingWindow.on("closed", () => {
+            settingWindow = null;
         });
     }
 })

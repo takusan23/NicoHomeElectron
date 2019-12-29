@@ -2,8 +2,12 @@
 exports.__esModule = true;
 var electron_1 = require("electron");
 var path = require("path");
+//メイン
 var mainWindow;
+//ログイン画面
 var loginWindow;
+//設定画面
+var settingWindow;
 function createWindow() {
     // Create the browser window.
     mainWindow = new electron_1.BrowserWindow({
@@ -60,9 +64,25 @@ electron_1.ipcMain.on('login', function (event, arg) {
             width: 800
         });
         loginWindow.loadFile(path.join(__dirname, "../src/html/login.html")); //index.htmlはsrcフォルダ（main.jsはjsフォルダ）なのでパス気をつけて。
-        loginWindow.webContents.openDevTools();
         loginWindow.on("closed", function () {
             loginWindow = null;
+        });
+    }
+});
+//設定画面表示。のIPC通信
+electron_1.ipcMain.on('setting', function (event, arg) {
+    if (arg === 'show') {
+        //設定画面表示。
+        settingWindow = new electron_1.BrowserWindow({
+            height: 600,
+            webPreferences: {
+                nodeIntegration: true //trueにしておく。preload使ってもいいけど今回はパス。
+            },
+            width: 800
+        });
+        settingWindow.loadFile(path.join(__dirname, "../src/html/settings.html")); //index.htmlはsrcフォルダ（main.jsはjsフォルダ）なのでパス気をつけて。
+        settingWindow.on("closed", function () {
+            settingWindow = null;
         });
     }
 });

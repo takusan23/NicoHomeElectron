@@ -1,6 +1,3 @@
-import { session } from "electron"
-import { stat } from "fs"
-
 const { ipcRenderer } = require('electron')
 
 //IPC通信
@@ -9,10 +6,19 @@ function showLoginWindow() {
     ipcRenderer.send('login', 'show')
 }
 
+function showSettingWindow() {
+    //設定画面を表示しろとメインプロセスへ送信
+    ipcRenderer.send('setting', 'show')
+}
+
 let heartbeatInterval: NodeJS.Timeout = null
 
+//動画ID
 let videoId = ""
-
+//動画タイトル
+let videoTitle = ""
+//動画サムネイル
+let videoThumbnail = ""
 
 //ニコニコ動画のHTML取得
 function getNicoVideoHTML() {
@@ -54,6 +60,11 @@ function getNicoVideoHTML() {
             const jsonString = jsonDiv.getAttribute('data-api-data')
             //dmcInfoがJSONに存在するかで分岐。
             const json = JSON.parse(jsonString)
+
+            //タイトルとサムネイル  
+            videoTitle = json.video.title
+            videoThumbnail = json.video.largeThumbnailURL
+
             if (json.video.dmcInfo != null) {
                 //存在するとき、APIを叩いてURLをもらう。新サーバーの動画？DMC？
                 //すべての動画が変換されているわけではない模様。
@@ -183,10 +194,6 @@ function getContentURL(jsonString: string) {
                 'Content-Type': 'application/json',
                 'Accept': 'application/json'
             }
-
-            // const modified_time = responseJSON.data.session.modified_time
-            // responseJSON.data.session.modified_time = modified_time + 40000
-
             //オプション
             var options = {
                 url: sessionAPIURL,
@@ -194,11 +201,8 @@ function getContentURL(jsonString: string) {
                 headers: headers,
                 json: responseJSON.data
             }
-
-
             console.log(sessionAPIURL);
             console.log(responseJSON.data);
-
 
             request(options, function (error: any, response: any, body: any) {
                 console.log('視聴継続メッセージ送信 40秒ごと')
@@ -230,7 +234,6 @@ function getContentURL(jsonString: string) {
             console.log(response.statusCode)
             console.log(body)
         })
-
     })
 
     //JSONにstoryboard_session_apiが無いときある？
@@ -329,49 +332,35 @@ function getContentURL(jsonString: string) {
     }
 }
 
-let isFirst = true
-
-function sendHeartBeat(id: string, session: string) {
-    //ハートビート（視聴継続メッセージ）送信
-
-    //OPTIONS の方
-    var xml = new XMLHttpRequest()
-    xml.open("OPTIONS", `https://api.dmc.nico/api/sessions/${id}?_format=json&_method=PUT`)
-    xml.onreadystatechange = function (e) {
-        isFirst = false
-        console.log(xml.status);
-
-    }
-    xml.send() //送る内容はapi.dmc.nico/api/sessionsのjson.data.sessionでいいらしい。
-
-
-    //POST の方
-    var xml = new XMLHttpRequest()
-    xml.open("POST", `https://api.dmc.nico/api/sessions/${id}?_format=json&_method=PUT`)
-    xml.onreadystatechange = function (e) {
-        isFirst = false
-        console.log(xml.status);
-
-    }
-    xml.send(session) //送る内容はapi.dmc.nico/api/sessionsのjson.data.sessionでいいらしい。
-
-}
-
-
-
 function playGoogleHome(url: string) {
     // google-home-notifierはなんかNode.JSのバージョンがなんとかで動かなかったのでこっちで。
     // 音楽再生だけなのでこっちでも良き
     // 参考：https://ebisu-voice-production.com/blogs/play-mp3-file-locally/
+
+    //ipアドレス取得
+    const ipAddress = localStorage.getItem('ip_address')
+    if (ipAddress === null) {
+        return //無いなら関数終了
+    }
+
     const { Client, DefaultMediaReceiver } = require('castv2-client');
-    const host = process.env.HOST || '192.168.1.36';
+    const host = process.env.HOST || ipAddress;
     const client = new Client();
     client.connect(host, () => {
         client.launch(DefaultMediaReceiver, (err: any, player: any) => {
             const media = {
                 contentId: url,
-                contentType: 'audio/mp3',
-                streamType: 'LIVE',
+                contentType: 'video/mp4',
+                streamType: 'BUFFERED',
+                //メタデータ（名前とかアルバムカバーとか）
+                metadata: {
+                    type: 0,
+                    metadataType: 0,
+                    title: videoTitle,
+                    images: [
+                        { url: videoThumbnail }
+                    ]
+                }
             };
             player.load(media, { autoplay: true }, (err: any, status: any) => {
                 console.log(err, status);
@@ -379,5 +368,7 @@ function playGoogleHome(url: string) {
             });
         });
     });
+
+
 }
 
