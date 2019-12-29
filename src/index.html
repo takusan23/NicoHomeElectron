@@ -17,28 +17,40 @@
     <script type="text/javascript" src="JS/materialize.min.js"></script>
     <script type="text/javascript" src="../js/renderer.js"></script>
 
+    <div class="stack_grid">
+        <div class="margin grid">
 
+            <div style="margin-top: 10px;" class="center">
+                <a class="waves-effect waves-light btn grey darken-2" id="login_button" onclick="showLoginWindow()"><i
+                        class="material-icons-outlined">lock</i></a>
+                <a class="waves-effect waves-light btn grey darken-2" id="setting_button" onclick="showSettingWindow()"><i
+                        class="material-icons-outlined">settings</i></a>
+            </div>
 
-    <div class="margin grid">
+            <div class="input-field col s6 center">
+                <input placeholder="smから始まる動画ID" id="video_id_input" type="text" class="validate">
+                <!-- <label for="video_id_input">動画ID</label> -->
+            </div>
 
-        <div style="margin-top: 10px;" class="center">
-            <a class="waves-effect waves-light btn" id="login_button" onclick="showLoginWindow()"><i
-                    class="material-icons-outlined">lock</i></a>
-            <a class="waves-effect waves-light btn" id="setting_button" onclick="showSettingWindow()"><i
-                    class="material-icons-outlined">settings</i></a>
+            <div style="margin-top: 10px;" class="center">
+                <a class="waves-effect waves-light btn grey darken-2" id="video_id_button" onclick="getNicoVideoHTML()"><i
+                        class="material-icons-outlined left">cast</i>再生</a>
+            </div>
         </div>
 
-        <div class="input-field col s6 center">
-            <input placeholder="smから始まる動画ID" id="video_id_input" type="text" class="validate">
-            <!-- <label for="video_id_input">動画ID</label> -->
+        <div class="content_area">
+            ここ
         </div>
 
-        <div style="margin-top: 10px;" class="center">
-            <a class="waves-effect waves-light btn" id="video_id_button" onclick="getNicoVideoHTML()"><i
-                    class="material-icons-outlined left">cast</i>再生</a>
+        <div class="margin player_area">
+            <img id="player_img" width="80" height="45">
+            <h6 id="player_title" class="single">たいとる</h6>
+            <a class="waves-effect waves-light btn grey darken-2" id="playStateButton"><i
+                    class="material-icons-outlined" id="player_controll_icon">play_arrow</i></a>
         </div>
-
     </div>
+
+
 
 
 </body>

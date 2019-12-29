@@ -1,3 +1,11 @@
+html {
+    height: 100%;
+}
+
+body {
+    height: 100%;
+}
+
 .width_80 {
     width: 80%;
 }
@@ -14,12 +22,34 @@
     margin: 1%;
 }
 
+.margin_20 {
+    margin: 20px;
+}
+
 .center {
     width: 95%;
     margin: 0 auto;
+}
+
+.stack_grid {
+    height: 100%;
+    display: grid;
+    grid-template-rows: 100px 1fr 60px;
 }
 
 .grid {
     display: grid;
     grid-template-columns: 150px 2fr 150px;
 }
+
+.player_area {
+    display: grid;
+    grid-template-columns: 100px 1fr 50px;
+}
+
+.single {
+    white-space: nowrap;
+    overflow: hidden;
+}
+
+.content_area {}

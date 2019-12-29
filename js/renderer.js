@@ -309,6 +309,15 @@ function getContentURL(jsonString) {
     }
 }
 function playGoogleHome(url) {
+    //プレイヤーのHTML
+    var playStateButton = document.getElementById('playStateButton');
+    var playerImg = document.getElementById('player_img');
+    playerImg.src = videoThumbnail;
+    var playStateIcon = document.getElementById('player_controll_icon');
+    playStateIcon.innerHTML = 'pause';
+    var playerTitle = document.getElementById('player_title');
+    playerTitle.innerText = videoTitle;
+    var isPlaying = false;
     // google-home-notifierはなんかNode.JSのバージョンがなんとかで動かなかったのでこっちで。
     // 音楽再生だけなのでこっちでも良き
     // 参考：https://ebisu-voice-production.com/blogs/play-mp3-file-locally/
@@ -336,9 +345,26 @@ function playGoogleHome(url) {
                     ]
                 }
             };
-            player.load(media, { autoplay: true }, function (err, status) {
+            player.load(media, { autoplay: true, repeatMode: "REPEAT_ALL" }, function (err, status) {
                 console.log(err, status);
-                client.close();
+                isPlaying = true;
+                //止められるように
+                playStateButton.onclick = function () {
+                    if (isPlaying) {
+                        player.pause(function () {
+                            playStateIcon.innerHTML = 'play_arrow';
+                        });
+                    }
+                    else {
+                        player.play(function () {
+                            playStateIcon.innerHTML = 'pause';
+                        });
+                    }
+                    //反転させとく
+                    isPlaying = !isPlaying;
+                };
+                player.media.currentSession.repeatMode = 'REPEAT_SINGLE';
+                console.log(player);
             });
         });
     });
