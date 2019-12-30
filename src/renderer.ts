@@ -18,6 +18,8 @@ function showSettingWindow() {
 
 let heartbeatInterval: NodeJS.Timeout = null
 
+let nextVideoTimeout: NodeJS.Timeout = null
+
 //動画ID
 let videoId = ""
 //動画タイトル
@@ -30,12 +32,19 @@ let videoLength = 0
 //マイリスの動画配列
 let mylistList: string[] = []
 
+//リピート再生
+let repeatInterval: NodeJS.Timeout = null
+let isRepeat = false
+
 //ニコニコ動画のHTML取得
 function getNicoVideoHTML() {
     const request = require('request')
 
     if (heartbeatInterval != null) {
         clearInterval(heartbeatInterval)
+    }
+    if (repeatInterval != null) {
+        clearInterval(repeatInterval)
     }
 
     //次の曲スイッチ
@@ -366,6 +375,8 @@ function playGoogleHome(url: string) {
     const playerTitle = document.getElementById('player_title')
     playerTitle.innerText = videoTitle
     const isNext = document.getElementById('next_video_check') as HTMLInputElement
+    const repeatButton = document.getElementById('repeat_button')
+
 
     let isPlaying = false
 
@@ -416,17 +427,32 @@ function playGoogleHome(url: string) {
                     }
                     //反転させとく
                     isPlaying = !isPlaying
+                    clearTimeout(nextVideoTimeout)
                 }
 
-                //次の曲？
-                if (isNext.checked) {
-                    console.log(videoLength * 1000);
-                    setTimeout('loadNextVideo()', videoLength * 1000)
-                }
             });
-
             player.on('status', function (status: any) {
-                console.log('status broadcast playerState=%s', status.playerState);
+                console.log(status.playerState);
+                if (status.playerState == 'PLAYING') {
+                    //次の曲？
+                    if (isNext.checked) {
+                        if (nextVideoTimeout != null) {
+                            clearTimeout(nextVideoTimeout)
+                        }
+                        nextVideoTimeout = setTimeout(function () { loadNextVideo() }, videoLength * 1000)
+
+                    }
+                }
+                //リピート再生
+                if (repeatInterval != null) {
+                    clearTimeout(repeatInterval)
+                }
+                repeatInterval = setTimeout(function () {
+                    if (isRepeat) {
+                        getNicoVideoHTML()
+                    }
+                }, videoLength * 1000)
+
             });
         });
     });
@@ -436,7 +462,7 @@ function loadNextVideo() {
     if (mylistList.length != 0) {
         const pos = mylistList.indexOf(videoId)
         const input: HTMLInputElement = <HTMLInputElement>document.getElementById('video_id_input')
-        input.value = mylistList[pos]
+        input.value = mylistList[pos + 1]
         getNicoVideoHTML()
     }
 }
@@ -566,4 +592,14 @@ function loadMylist(id: string, nicotoken: string) {
         }
     })
 
+}
+
+function setRepeat() {
+    const repeatButton = document.getElementById('repeat_button')
+    isRepeat = !isRepeat
+    if (isRepeat) {
+        repeatButton.getElementsByTagName('i')[0].innerHTML = 'repeat_one'
+    } else {
+        repeatButton.getElementsByTagName('i')[0].innerHTML = 'repeat'
+    }
 }

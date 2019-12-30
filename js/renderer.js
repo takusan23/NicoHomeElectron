@@ -12,6 +12,7 @@ function showSettingWindow() {
     ipcRenderer.send('setting', 'show');
 }
 var heartbeatInterval = null;
+var nextVideoTimeout = null;
 //動画ID
 var videoId = "";
 //動画タイトル
@@ -22,11 +23,17 @@ var videoThumbnail = "";
 var videoLength = 0;
 //マイリスの動画配列
 var mylistList = [];
+//リピート再生
+var repeatInterval = null;
+var isRepeat = false;
 //ニコニコ動画のHTML取得
 function getNicoVideoHTML() {
     var request = require('request');
     if (heartbeatInterval != null) {
         clearInterval(heartbeatInterval);
+    }
+    if (repeatInterval != null) {
+        clearInterval(repeatInterval);
     }
     //次の曲スイッチ
     var nextSwitch = document.getElementById('next_video_check');
@@ -334,6 +341,7 @@ function playGoogleHome(url) {
     var playerTitle = document.getElementById('player_title');
     playerTitle.innerText = videoTitle;
     var isNext = document.getElementById('next_video_check');
+    var repeatButton = document.getElementById('repeat_button');
     var isPlaying = false;
     // google-home-notifierはなんかNode.JSのバージョンがなんとかで動かなかったのでこっちで。
     // 音楽再生だけなのでこっちでも良き
@@ -379,15 +387,29 @@ function playGoogleHome(url) {
                     }
                     //反転させとく
                     isPlaying = !isPlaying;
+                    clearTimeout(nextVideoTimeout);
                 };
-                //次の曲？
-                if (isNext.checked) {
-                    console.log(videoLength * 1000);
-                    setTimeout('loadNextVideo()', videoLength * 1000);
-                }
             });
             player.on('status', function (status) {
-                console.log('status broadcast playerState=%s', status.playerState);
+                console.log(status.playerState);
+                if (status.playerState == 'PLAYING') {
+                    //次の曲？
+                    if (isNext.checked) {
+                        if (nextVideoTimeout != null) {
+                            clearTimeout(nextVideoTimeout);
+                        }
+                        nextVideoTimeout = setTimeout(function () { loadNextVideo(); }, videoLength * 1000);
+                    }
+                }
+                //リピート再生
+                if (repeatInterval != null) {
+                    clearTimeout(repeatInterval);
+                }
+                repeatInterval = setTimeout(function () {
+                    if (isRepeat) {
+                        getNicoVideoHTML();
+                    }
+                }, videoLength * 1000);
             });
         });
     });
@@ -396,7 +418,7 @@ function loadNextVideo() {
     if (mylistList.length != 0) {
         var pos = mylistList.indexOf(videoId);
         var input = document.getElementById('video_id_input');
-        input.value = mylistList[pos];
+        input.value = mylistList[pos + 1];
         getNicoVideoHTML();
     }
 }
@@ -525,5 +547,15 @@ function loadMylist(id, nicotoken) {
             _loop_2(index);
         }
     });
+}
+function setRepeat() {
+    var repeatButton = document.getElementById('repeat_button');
+    isRepeat = !isRepeat;
+    if (isRepeat) {
+        repeatButton.getElementsByTagName('i')[0].innerHTML = 'repeat_one';
+    }
+    else {
+        repeatButton.getElementsByTagName('i')[0].innerHTML = 'repeat';
+    }
 }
 //# sourceMappingURL=renderer.js.map

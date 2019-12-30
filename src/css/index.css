@@ -44,7 +44,7 @@ body {
 
 .player_area {
     display: grid;
-    grid-template-columns: 100px 1fr 50px;
+    grid-template-columns: 100px 1fr 60px 60px;
 }
 
 .single {
