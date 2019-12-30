@@ -18,12 +18,18 @@ var videoId = "";
 var videoTitle = "";
 //動画サムネイル
 var videoThumbnail = "";
+//動画時間
+var videoLength = 0;
+//マイリスの動画配列
+var mylistList = [];
 //ニコニコ動画のHTML取得
 function getNicoVideoHTML() {
     var request = require('request');
     if (heartbeatInterval != null) {
         clearInterval(heartbeatInterval);
     }
+    //次の曲スイッチ
+    var nextSwitch = document.getElementById('next_video_check');
     // HTMLInputElement じゃないと value ない
     var input = document.getElementById('video_id_input');
     videoId = input.value;
@@ -60,6 +66,8 @@ function getNicoVideoHTML() {
             videoTitle = json.video.title;
             videoThumbnail = json.video.largeThumbnailURL;
             if (json.video.dmcInfo != null) {
+                //再生時間取得
+                videoLength = json.video.dmcInfo.video.length_seconds;
                 //存在するとき、APIを叩いてURLをもらう。新サーバーの動画？DMC？
                 //すべての動画が変換されているわけではない模様。
                 getContentURL(jsonString);
@@ -72,6 +80,10 @@ function getNicoVideoHTML() {
                 console.log(url_1);
                 //  playGoogleHome(url)
                 M.toast({ html: 'smileサーバーの動画は再生できません。' });
+                //マイリスで次の曲に自動で移動する場合は
+                if (nextSwitch.checked) {
+                    loadNextVideo();
+                }
             }
         }
     });
@@ -321,6 +333,7 @@ function playGoogleHome(url) {
     playStateIcon.innerHTML = 'pause';
     var playerTitle = document.getElementById('player_title');
     playerTitle.innerText = videoTitle;
+    var isNext = document.getElementById('next_video_check');
     var isPlaying = false;
     // google-home-notifierはなんかNode.JSのバージョンがなんとかで動かなかったのでこっちで。
     // 音楽再生だけなのでこっちでも良き
@@ -367,9 +380,25 @@ function playGoogleHome(url) {
                     //反転させとく
                     isPlaying = !isPlaying;
                 };
+                //次の曲？
+                if (isNext.checked) {
+                    console.log(videoLength * 1000);
+                    setTimeout('loadNextVideo()', videoLength * 1000);
+                }
+            });
+            player.on('status', function (status) {
+                console.log('status broadcast playerState=%s', status.playerState);
             });
         });
     });
+}
+function loadNextVideo() {
+    if (mylistList.length != 0) {
+        var pos = mylistList.indexOf(videoId);
+        var input = document.getElementById('video_id_input');
+        input.value = mylistList[pos];
+        getNicoVideoHTML();
+    }
 }
 //マイリスト読み込む
 function getMylistToken() {
@@ -442,6 +471,7 @@ function loadMylistList(nicotoken) {
     });
 }
 function loadMylist(id, nicotoken) {
+    mylistList = [];
     //空にする
     var videolist = document.getElementById('videolist');
     videolist.innerHTML = '';
@@ -488,6 +518,8 @@ function loadMylist(id, nicotoken) {
             parentDiv.append(img);
             parentDiv.append(span);
             videolist.append(parentDiv);
+            //配列に入れておく
+            mylistList.push(item.item_data.video_id);
         };
         for (var index = 0; index < list.length; index++) {
             _loop_2(index);

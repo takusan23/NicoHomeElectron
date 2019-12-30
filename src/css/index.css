@@ -54,7 +54,7 @@ body {
 
 .content_area {
     display: grid;
-    grid-template-columns: 200px 1fr;
+    grid-template-columns: 30% 1fr;
 }
 
 .mylistlist {
