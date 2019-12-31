@@ -55,13 +55,14 @@ function getNicoVideoHTML() {
     const pattern = '(sm|so)([0-9]+)'
     if (input.value.match(pattern) == undefined) {
         M.toast({ html: '正規表現で動画IDを見つけられませんでした。' })
-        return
-    }   
+        return //見つからん。関数終了
+    }
     videoId = input.value.match(pattern)[0]
     //user_session
     const user_session = localStorage.getItem('user_session')
     if (user_session == null) {
-        return //見つからん。関数終了
+        M.toast({ html: 'もう一度ログインをしてみてください。' })
+        return
     }
     //URL
     const url = `https://www.nicovideo.jp/watch/${videoId}`
