@@ -2,6 +2,7 @@
 exports.__esModule = true;
 var electron_1 = require("electron");
 var path = require("path");
+var localShortcut = require("electron-localshortcut");
 //メイン
 var mainWindow;
 //ログイン画面
@@ -20,7 +21,7 @@ function createWindow() {
     // and load the index.html of the app.
     mainWindow.loadFile(path.join(__dirname, "../src/index.html")); //index.htmlはsrcフォルダ（main.jsはjsフォルダ）なのでパス気をつけて。
     // Open the DevTools.
-    mainWindow.webContents.openDevTools();
+    // mainWindow.webContents.openDevTools();
     electron_1.Menu.setApplicationMenu(null);
     // Emitted when the window is closed.
     mainWindow.on("closed", function () {
@@ -29,6 +30,24 @@ function createWindow() {
         // when you should delete the corresponding element.
         mainWindow = null;
     });
+    //ショートカットキーで開発者モード開く
+    localShortcut.register(mainWindow, 'F12', function () {
+        mainWindow.webContents.openDevTools();
+    });
+    //ショートカットキーでリロード
+    localShortcut.register(mainWindow, 'F5', function () {
+        mainWindow.reload();
+    });
+    //WindowsMediaPlayerの用にタスクバーから音声コントロールできるようにする
+    mainWindow.setThumbarButtons([
+        {
+            tooltip: '一時停止・再生',
+            icon: electron_1.nativeImage.createFromPath(__dirname.replace('js', '') + 'src\\img\\outline_audiotrack_white_18dp.png'),
+            click: function () {
+                mainWindow.webContents.send('playstate', 'playstate');
+            }
+        }
+    ]);
 }
 // This method will be called when Electron has finished
 // initialization and is ready to create browser windows.

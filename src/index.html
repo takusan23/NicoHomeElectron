@@ -42,13 +42,13 @@
             <div class="mylistlist" id="mylist_list_div">
             </div>
             <div class="videolist">
-                <div class="switch margin">
-                    <label class="black-text">
-                        次の曲に自動で移動する
-                        <input type="checkbox" id="next_video_check">
-                        <span class="lever"></span>
-                    </label>
-                </div>
+                <!-- <div class="switch margin"> -->
+                    <!-- <label class="black-text"> -->
+                        <!-- 次の曲に自動で移動する -->
+                        <!-- <input type="checkbox" id="next_video_check"> -->
+                        <!-- <span class="lever"></span> -->
+                    <!-- </label> -->
+                <!-- </div> -->
                 <div id="videolist">
 
                 </div>
@@ -58,8 +58,10 @@
         <div class="margin player_area">
             <img id="player_img" width="80" height="45">
             <h6 id="player_title" class="single">たいとる</h6>
-            <a class="waves-effect waves-light btn grey darken-2" style="margin: 5px;" onclick="setRepeat()" id="repeat_button"><i
-                    class="material-icons-outlined">repeat</i></a>
+            <a class="waves-effect waves-light btn grey darken-2" style="margin: 5px;" onclick="setAutoPlay()"
+                id="autoplay_button"><i class="material-icons-outlined">queue_music</i></a>
+            <a class="waves-effect waves-light btn grey darken-2" style="margin: 5px;" onclick="setRepeat()"
+                id="repeat_button"><i class="material-icons-outlined">repeat</i></a>
             <a class="waves-effect waves-light btn grey darken-2" style="margin: 5px;" id="playStateButton"><i
                     class="material-icons-outlined" id="player_controll_icon">play_arrow</i></a>
         </div>

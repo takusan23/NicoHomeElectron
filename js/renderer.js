@@ -1,4 +1,4 @@
-var ipcRenderer = require('electron').ipcRenderer;
+var _a = require('electron'), ipcRenderer = _a.ipcRenderer, nativeImage = _a.nativeImage;
 window.onload = function () {
     getMylistToken();
 };
@@ -24,22 +24,26 @@ var videoLength = 0;
 //マイリスの動画配列
 var mylistList = [];
 //リピート再生
-var repeatInterval = null;
 var isRepeat = false;
+//自動で次の
+var isAutoPlay = false;
 //ニコニコ動画のHTML取得
 function getNicoVideoHTML() {
     var request = require('request');
     if (heartbeatInterval != null) {
         clearInterval(heartbeatInterval);
     }
-    if (repeatInterval != null) {
-        clearInterval(repeatInterval);
-    }
     //次の曲スイッチ
-    var nextSwitch = document.getElementById('next_video_check');
+    // const nextSwitch = document.getElementById('next_video_check') as HTMLInputElement
     // HTMLInputElement じゃないと value ない
     var input = document.getElementById('video_id_input');
-    videoId = input.value;
+    //正規表現
+    var pattern = '(sm|so)([0-9]+)';
+    if (input.value.match(pattern) == undefined) {
+        M.toast({ html: '正規表現で動画IDを見つけられませんでした。' });
+        return;
+    }
+    videoId = input.value.match(pattern)[0];
     //user_session
     var user_session = localStorage.getItem('user_session');
     if (user_session == null) {
@@ -88,7 +92,7 @@ function getNicoVideoHTML() {
                 //  playGoogleHome(url)
                 M.toast({ html: 'smileサーバーの動画は再生できません。' });
                 //マイリスで次の曲に自動で移動する場合は
-                if (nextSwitch.checked) {
+                if (isAutoPlay) {
                     loadNextVideo();
                 }
             }
@@ -340,7 +344,6 @@ function playGoogleHome(url) {
     playStateIcon.innerHTML = 'pause';
     var playerTitle = document.getElementById('player_title');
     playerTitle.innerText = videoTitle;
-    var isNext = document.getElementById('next_video_check');
     var repeatButton = document.getElementById('repeat_button');
     var isPlaying = false;
     // google-home-notifierはなんかNode.JSのバージョンがなんとかで動かなかったのでこっちで。
@@ -387,29 +390,43 @@ function playGoogleHome(url) {
                     }
                     //反転させとく
                     isPlaying = !isPlaying;
-                    clearTimeout(nextVideoTimeout);
                 };
             });
+            //再生終了すれば2
+            var idleCount = 0;
             player.on('status', function (status) {
                 console.log(status.playerState);
-                if (status.playerState == 'PLAYING') {
-                    //次の曲？
-                    if (isNext.checked) {
-                        if (nextVideoTimeout != null) {
-                            clearTimeout(nextVideoTimeout);
+                //開始と終了に
+                if (status.playerState == 'IDLE') {
+                    idleCount++;
+                    //終了したら
+                    if (idleCount == 2) {
+                        //リピート再生
+                        playGoogleHome(url);
+                        //次の曲？
+                        if (isAutoPlay) {
+                            loadNextVideo();
                         }
-                        nextVideoTimeout = setTimeout(function () { loadNextVideo(); }, videoLength * 1000);
                     }
                 }
-                //リピート再生
-                if (repeatInterval != null) {
-                    clearTimeout(repeatInterval);
+                if (status.playerState == 'PLAYING') {
                 }
-                repeatInterval = setTimeout(function () {
-                    if (isRepeat) {
-                        getNicoVideoHTML();
+            });
+            ipcRenderer.on('playstate', function (event, arg) {
+                if (arg == 'playstate') {
+                    if (isPlaying) {
+                        player.pause(function () {
+                            playStateIcon.innerHTML = 'play_arrow';
+                        });
                     }
-                }, videoLength * 1000);
+                    else {
+                        player.play(function () {
+                            playStateIcon.innerHTML = 'pause';
+                        });
+                    }
+                    //反転させとく
+                    isPlaying = !isPlaying;
+                }
             });
         });
     });
@@ -556,6 +573,16 @@ function setRepeat() {
     }
     else {
         repeatButton.getElementsByTagName('i')[0].innerHTML = 'repeat';
+    }
+}
+function setAutoPlay() {
+    var autoPlayButton = document.getElementById('autoplay_button');
+    isAutoPlay = !isAutoPlay;
+    if (isAutoPlay) {
+        autoPlayButton.getElementsByTagName('i')[0].innerHTML = 'playlist_play';
+    }
+    else {
+        autoPlayButton.getElementsByTagName('i')[0].innerHTML = 'queue_music';
     }
 }
 //# sourceMappingURL=renderer.js.map

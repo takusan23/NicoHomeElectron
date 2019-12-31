@@ -1,4 +1,4 @@
-const { ipcRenderer } = require('electron')
+const { ipcRenderer, nativeImage } = require('electron')
 
 window.onload = function () {
     getMylistToken()
@@ -33,8 +33,10 @@ let videoLength = 0
 let mylistList: string[] = []
 
 //リピート再生
-let repeatInterval: NodeJS.Timeout = null
 let isRepeat = false
+
+//自動で次の
+let isAutoPlay = false
 
 //ニコニコ動画のHTML取得
 function getNicoVideoHTML() {
@@ -43,20 +45,23 @@ function getNicoVideoHTML() {
     if (heartbeatInterval != null) {
         clearInterval(heartbeatInterval)
     }
-    if (repeatInterval != null) {
-        clearInterval(repeatInterval)
-    }
 
     //次の曲スイッチ
-    const nextSwitch = document.getElementById('next_video_check') as HTMLInputElement
+    // const nextSwitch = document.getElementById('next_video_check') as HTMLInputElement
 
     // HTMLInputElement じゃないと value ない
     const input: HTMLInputElement = <HTMLInputElement>document.getElementById('video_id_input')
-    videoId = input.value
+    //正規表現
+    const pattern = '(sm|so)([0-9]+)'
+    if (input.value.match(pattern) == undefined) {
+        M.toast({ html: '正規表現で動画IDを見つけられませんでした。' })
+        return
+    }   
+    videoId = input.value.match(pattern)[0]
     //user_session
     const user_session = localStorage.getItem('user_session')
     if (user_session == null) {
-        return
+        return //見つからん。関数終了
     }
     //URL
     const url = `https://www.nicovideo.jp/watch/${videoId}`
@@ -106,7 +111,7 @@ function getNicoVideoHTML() {
                 M.toast({ html: 'smileサーバーの動画は再生できません。' })
 
                 //マイリスで次の曲に自動で移動する場合は
-                if (nextSwitch.checked) {
+                if (isAutoPlay) {
                     loadNextVideo()
                 }
 
@@ -374,7 +379,6 @@ function playGoogleHome(url: string) {
     playStateIcon.innerHTML = 'pause'
     const playerTitle = document.getElementById('player_title')
     playerTitle.innerText = videoTitle
-    const isNext = document.getElementById('next_video_check') as HTMLInputElement
     const repeatButton = document.getElementById('repeat_button')
 
 
@@ -427,33 +431,45 @@ function playGoogleHome(url: string) {
                     }
                     //反転させとく
                     isPlaying = !isPlaying
-                    clearTimeout(nextVideoTimeout)
                 }
 
             });
+            //再生終了すれば2
+            let idleCount = 0
             player.on('status', function (status: any) {
                 console.log(status.playerState);
-                if (status.playerState == 'PLAYING') {
-                    //次の曲？
-                    if (isNext.checked) {
-                        if (nextVideoTimeout != null) {
-                            clearTimeout(nextVideoTimeout)
+                //開始と終了に
+                if (status.playerState == 'IDLE') {
+                    idleCount++
+                    //終了したら
+                    if (idleCount == 2) {
+                        //リピート再生
+                        playGoogleHome(url)
+                        //次の曲？
+                        if (isAutoPlay) {
+                            loadNextVideo()
                         }
-                        nextVideoTimeout = setTimeout(function () { loadNextVideo() }, videoLength * 1000)
-
                     }
                 }
-                //リピート再生
-                if (repeatInterval != null) {
-                    clearTimeout(repeatInterval)
-                }
-                repeatInterval = setTimeout(function () {
-                    if (isRepeat) {
-                        getNicoVideoHTML()
-                    }
-                }, videoLength * 1000)
+                if (status.playerState == 'PLAYING') {
 
+                }
             });
+            ipcRenderer.on('playstate', function (event, arg) {
+                if (arg == 'playstate') {
+                    if (isPlaying) {
+                        player.pause(function () {
+                            playStateIcon.innerHTML = 'play_arrow'
+                        })
+                    } else {
+                        player.play(function () {
+                            playStateIcon.innerHTML = 'pause'
+                        })
+                    }
+                    //反転させとく
+                    isPlaying = !isPlaying
+                }
+            })
         });
     });
 }
@@ -601,5 +617,15 @@ function setRepeat() {
         repeatButton.getElementsByTagName('i')[0].innerHTML = 'repeat_one'
     } else {
         repeatButton.getElementsByTagName('i')[0].innerHTML = 'repeat'
+    }
+}
+
+function setAutoPlay() {
+    const autoPlayButton = document.getElementById('autoplay_button')
+    isAutoPlay = !isAutoPlay
+    if (isAutoPlay) {
+        autoPlayButton.getElementsByTagName('i')[0].innerHTML = 'playlist_play'
+    } else {
+        autoPlayButton.getElementsByTagName('i')[0].innerHTML = 'queue_music'
     }
 }

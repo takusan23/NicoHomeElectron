@@ -44,7 +44,7 @@ body {
 
 .player_area {
     display: grid;
-    grid-template-columns: 100px 1fr 60px 60px;
+    grid-template-columns: 100px 1fr 60px 60px 60px;
 }
 
 .single {
@@ -81,5 +81,5 @@ body {
 .videolist {
     overflow-y: scroll;
     overflow-x: hidden;
-    height: 100%;
+    height: auto;
 }
